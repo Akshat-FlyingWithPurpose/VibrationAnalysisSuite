@@ -29,7 +29,7 @@ from .styles import max_btn_style, restore_btn_style
 
 # Fixed colour palette — one colour per file slot (cycles after 10)
 _PALETTE = [
-    '#89b4fa', '#f38ba8', '#a6e3a1', '#fab387',
+    '#1565c0', '#f38ba8', '#a6e3a1', '#fab387',
     '#cba6f7', '#89dceb', '#f9e2af', '#94e2d5',
     '#eba0ac', '#b4befe',
 ]
@@ -51,6 +51,9 @@ class FFTTab(QWidget):
 
         # Data-cursor state: maps axes → (annotation, marker)
         self._data_cursors: dict = {}
+
+        # Axis carousel state
+        self._axis_idx = 0   # 0=X, 1=Y, 2=Z
 
         self._setup_ui()
 
@@ -203,7 +206,43 @@ class FFTTab(QWidget):
         self._cursor_btn.toggled.connect(self._on_cursor_mode_toggled)
         self.toolbar.addWidget(self._cursor_btn)
 
+        # ── Axis navigation bar ──────────────────────────────────────────────
+        nav_bar = QWidget()
+        nav_bar.setFixedHeight(38)
+        nav_layout = QHBoxLayout(nav_bar)
+        nav_layout.setContentsMargins(8, 4, 8, 4)
+        nav_layout.setSpacing(4)
+
+        self._btn_prev = QPushButton("◀")
+        self._btn_prev.setFixedSize(32, 28)
+        self._btn_prev.setToolTip("Previous axis")
+        self._btn_prev.clicked.connect(self._prev_axis)
+
+        self._btn_next = QPushButton("▶")
+        self._btn_next.setFixedSize(32, 28)
+        self._btn_next.setToolTip("Next axis")
+        self._btn_next.clicked.connect(self._next_axis)
+
+        self._nav_axis_btns = []
+        for i, label in enumerate(['AccX', 'AccY', 'AccZ']):
+            btn = QToolButton()
+            btn.setText(label)
+            btn.setCheckable(True)
+            btn.setMinimumWidth(52)
+            btn.setFixedHeight(28)
+            btn.setToolTip(f"Show Acc{['X','Y','Z'][i]}")
+            btn.clicked.connect(lambda _, idx=i: self._jump_to_axis(idx))
+            self._nav_axis_btns.append(btn)
+
+        nav_layout.addStretch()
+        nav_layout.addWidget(self._btn_prev)
+        for btn in self._nav_axis_btns:
+            nav_layout.addWidget(btn)
+        nav_layout.addWidget(self._btn_next)
+        nav_layout.addStretch()
+
         pl.addWidget(self.toolbar)
+        pl.addWidget(nav_bar)
         pl.addWidget(self.canvas)
 
         # Reposition overlay buttons whenever the canvas is resized
@@ -218,6 +257,37 @@ class FFTTab(QWidget):
 
         placeholder_axes(self.fig, "Add .bin files and click Analyze.")
         self.canvas.draw()
+        self._update_nav()
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Axis navigation
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _update_nav(self):
+        """Sync nav bar checked states with the current axis index."""
+        for i, btn in enumerate(self._nav_axis_btns):
+            btn.setChecked(i == self._axis_idx)
+
+    def _prev_axis(self):
+        self._axis_idx = (self._axis_idx - 1) % 3
+        self._update_nav()
+        if self._analyzed:
+            self._maximized_key = None
+            self._draw(log=False)
+
+    def _next_axis(self):
+        self._axis_idx = (self._axis_idx + 1) % 3
+        self._update_nav()
+        if self._analyzed:
+            self._maximized_key = None
+            self._draw(log=False)
+
+    def _jump_to_axis(self, idx: int):
+        self._axis_idx = idx
+        self._update_nav()
+        if self._analyzed:
+            self._maximized_key = None
+            self._draw(log=False)
 
     # ─────────────────────────────────────────────────────────────────────────
     # Per-file row widget
@@ -666,81 +736,70 @@ class FFTTab(QWidget):
         auto_ylim  = self.chk_auto_ylim.isChecked()
         fmin       = self.spin_fmin.value()
         fmax       = self.spin_fmax.value()
+        axis       = ['X', 'Y', 'Z'][self._axis_idx]
 
         n_cols = (1 if show_fft else 0) + (1 if show_time else 0)
-        n_rows = 3
 
         self._clear_data_cursors()
         self.fig.clear()
         self.fig.patch.set_facecolor(plot_utils.FIG_BG)
 
-        # Build axes grid
+        # Build single-row axes for the current axis
         axes = {}
-        for row, axis in enumerate(['X', 'Y', 'Z']):
-            col = 0
-            if show_fft:
-                col += 1
-                ax = self.fig.add_subplot(n_rows, n_cols, row * n_cols + col)
-                style_axes(ax,
-                           title=f"FFT \u2014 Acc{axis}",
-                           xlabel='Frequency (Hz)', ylabel='|FFT| (g)',
-                           title_color=AXIS_COLORS[axis])
-                axes[f'fft_{axis}'] = ax
+        col  = 0
+        if show_fft:
+            col += 1
+            ax = self.fig.add_subplot(1, n_cols, col)
+            style_axes(ax,
+                       title=f"FFT \u2014 Acc{axis}",
+                       xlabel='Frequency (Hz)', ylabel='|FFT| (g)',
+                       title_color=AXIS_COLORS[axis])
+            axes[f'fft_{axis}'] = ax
 
-            if show_time:
-                col += 1
-                ax = self.fig.add_subplot(n_rows, n_cols, row * n_cols + col)
-                style_axes(ax,
-                           title=f"Time Domain \u2014 Acc{axis}",
-                           xlabel='Time (s)', ylabel='Acceleration (g)',
-                           title_color=AXIS_COLORS[axis])
-                axes[f'time_{axis}'] = ax
+        if show_time:
+            col += 1
+            ax = self.fig.add_subplot(1, n_cols, col)
+            style_axes(ax,
+                       title=f"Time Domain \u2014 Acc{axis}",
+                       xlabel='Time (s)', ylabel='Acceleration (g)',
+                       title_color=AXIS_COLORS[axis])
+            axes[f'time_{axis}'] = ax
 
-        # Track per-axis peaks for auto ylim
-        max_peaks = {'X': 0.0, 'Y': 0.0, 'Z': 0.0}
+        max_peak = 0.0
 
-        # Plot data
         for entry in active:
-            color = entry['color']
-            fname = os.path.basename(entry['path'])
+            sig   = entry['data'][f'acc{axis}_uniform']
             t     = entry['data']['time_uniform']
             Fs    = entry['data']['Fs']
-            sigs  = {
-                'X': entry['data']['accX_uniform'],
-                'Y': entry['data']['accY_uniform'],
-                'Z': entry['data']['accZ_uniform'],
-            }
+            color = entry['color']
+            fname = os.path.basename(entry['path'])
 
-            for axis, sig in sigs.items():
-                if show_fft:
-                    f, _, sm = compute_fft(sig, Fs, smooth_win)
-                    ax = axes[f'fft_{axis}']
-                    ax.plot(f, sm, color=color, linewidth=0.9,
-                            alpha=0.85, label=fname)
-                    if auto_ylim:
-                        max_peaks[axis] = max(max_peaks[axis], sm.max())
-                    else:
-                        ax.set_ylim(0, ylim_fft)
-                    if log_freq:
-                        ax.set_xscale('log')
+            if show_fft:
+                f, _, sm = compute_fft(sig, Fs, smooth_win)
+                ax = axes[f'fft_{axis}']
+                ax.plot(f, sm, color=color, linewidth=0.9,
+                        alpha=0.85, label=fname)
+                if auto_ylim:
+                    max_peak = max(max_peak, sm.max())
+                else:
+                    ax.set_ylim(0, ylim_fft)
+                if log_freq:
+                    ax.set_xscale('log')
 
-                if show_time:
-                    ax = axes[f'time_{axis}']
-                    ax.plot(t, sig, color=color, linewidth=0.7,
-                            alpha=0.8, label=fname)
+            if show_time:
+                ax = axes[f'time_{axis}']
+                ax.plot(t, sig, color=color, linewidth=0.7,
+                        alpha=0.8, label=fname)
 
             if log:
                 self._log(f"[FFT] Processed '{fname}' (Fs\u2248{Fs:.1f} Hz)")
 
-        # Apply auto ylim and freq range after all files are plotted
         if show_fft:
-            for axis in ['X', 'Y', 'Z']:
-                if f'fft_{axis}' in axes:
-                    ax = axes[f'fft_{axis}']
-                    if auto_ylim and max_peaks[axis] > 0:
-                        ax.set_ylim(0, max_peaks[axis] * 1.3)
-                    if not log_freq:
-                        ax.set_xlim(fmin, fmax)
+            ax = axes[f'fft_{axis}']
+            if auto_ylim and max_peak > 0:
+                ax.set_ylim(0, max_peak * 1.3)
+            if not log_freq:
+                ax.set_xlim(fmin, fmax)
 
         for ax in axes.values():
             add_legend(ax)
@@ -748,7 +807,6 @@ class FFTTab(QWidget):
         self.fig.tight_layout(pad=1.5)
         self.canvas.draw()
 
-        # Save axes dict and place maximize buttons
         self._current_axes_dict = axes
         self._place_overlay_buttons()
 
@@ -756,7 +814,7 @@ class FFTTab(QWidget):
             n_active = len(active)
             n_total  = len(self._files)
             self._log(
-                f"[FFT] Done \u2014 {n_active}/{n_total} file(s) shown."
+                f"[FFT] Done \u2014 Acc{axis}  {n_active}/{n_total} file(s) shown."
             )
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -775,4 +833,5 @@ class FFTTab(QWidget):
             retheme_axes(ax, title_color=AXIS_COLORS[axis])
         self._clear_data_cursors()            # tips use theme colours; stale after switch
         self._place_overlay_buttons()         # refresh overlay button styles
+        self._update_nav()                    # re-check active axis button
         self.canvas.draw_idle()
