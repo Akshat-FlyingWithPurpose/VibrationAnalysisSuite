@@ -1,0 +1,763 @@
+% ============================================================
+%  Vibration Analysis Suite — User Manual
+%  Author : Akshat_EA
+%  Engine : pdfLaTeX  (compile twice for TOC + refs)
+% ============================================================
+\documentclass[12pt, a4paper]{article}
+
+% ── Packages ────────────────────────────────────────────────
+\usepackage[a4paper, top=2.5cm, bottom=2.5cm,
+            left=3cm,  right=3cm]{geometry}
+\usepackage{fontenc}
+\usepackage{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{titletoc}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{tcolorbox}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{setspace}
+\usepackage{eso-pic}
+
+% ── Colour palette (Catppuccin-inspired) ────────────────────
+\definecolor{accent}    {HTML}{1e66f5}
+\definecolor{accentdark}{HTML}{0a50e0}
+\definecolor{muted}     {HTML}{6c7086}
+\definecolor{warn}      {HTML}{d20f39}
+\definecolor{success}   {HTML}{40a02b}
+\definecolor{codebg}    {HTML}{f4f4f8}
+\definecolor{codefg}    {HTML}{1e1e2e}
+\definecolor{notebg}    {HTML}{dce0f4}
+\definecolor{warnbg}    {HTML}{fce8ec}
+\definecolor{tipbg}     {HTML}{e6f4ea}
+\definecolor{headerbg}  {HTML}{1e1e2e}
+\definecolor{headertext}{HTML}{cdd6f4}
+
+% ── Hyperref setup ───────────────────────────────────────────
+\hypersetup{
+  colorlinks = true,
+  linkcolor  = accent,
+  urlcolor   = accentdark,
+  citecolor  = muted,
+  pdftitle   = {Vibration Analysis Suite — User Manual},
+  pdfauthor  = {Akshat\_EA},
+}
+
+% ── Section title styling ────────────────────────────────────
+\titleformat{\section}
+  {\Large\bfseries\color{accent}}
+  {\thesection}{1em}{}
+  [\color{accent}\titlerule]
+
+\titleformat{\subsection}
+  {\large\bfseries\color{accentdark}}
+  {\thesubsection}{1em}{}
+
+\titleformat{\subsubsection}
+  {\normalsize\bfseries\color{codefg}}
+  {\thesubsubsection}{1em}{}
+
+% ── Header / Footer ─────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{muted}\textit{Vibration Analysis Suite}}
+\fancyhead[R]{\small\color{muted}\textit{User Manual}}
+\fancyfoot[C]{\small\color{muted}\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% ── Code listing style ───────────────────────────────────────
+\lstdefinestyle{shell}{
+  backgroundcolor = \color{codebg},
+  basicstyle      = \ttfamily\small\color{codefg},
+  breaklines      = true,
+  frame           = single,
+  framerule       = 0.6pt,
+  rulecolor       = \color{accent},
+  xleftmargin     = 8pt,
+  xrightmargin    = 8pt,
+  aboveskip       = 8pt,
+  belowskip       = 4pt,
+}
+\lstset{style=shell}
+
+% ── Custom boxes ─────────────────────────────────────────────
+\tcbuselibrary{skins, breakable}
+
+\newtcolorbox{notebox}{
+  enhanced, breakable,
+  colback  = notebg,
+  colframe = accent,
+  fonttitle= \bfseries\color{accent},
+  title    = {$\blacktriangleright$\; Note},
+  boxrule  = 0.8pt,
+  arc      = 4pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+}
+
+\newtcolorbox{warnbox}{
+  enhanced, breakable,
+  colback  = warnbg,
+  colframe = warn,
+  fonttitle= \bfseries\color{warn},
+  title    = {$\bigtriangleup$\; Warning},
+  boxrule  = 0.8pt,
+  arc      = 4pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+}
+
+\newtcolorbox{tipbox}{
+  enhanced, breakable,
+  colback  = tipbg,
+  colframe = success,
+  fonttitle= \bfseries\color{success},
+  title    = {$\checkmark$\; Tip},
+  boxrule  = 0.8pt,
+  arc      = 4pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+}
+
+% ── Step counter ─────────────────────────────────────────────
+\newcounter{stepcnt}
+\newcommand{\step}[1]{%
+  \stepcounter{stepcnt}%
+  \noindent\textbf{\color{accent}Step \thestepcnt\,:}\enspace #1\par\smallskip
+}
+\newcommand{\resetsteps}{\setcounter{stepcnt}{0}}
+
+% ── Key shortcut macro ───────────────────────────────────────
+\newcommand{\key}[1]{%
+  \fbox{\small\ttfamily #1}%
+}
+
+% ── Button macro ─────────────────────────────────────────────
+\newcommand{\btn}[1]{%
+  \textbf{\color{accentdark}[#1]}%
+}
+
+% ============================================================
+\begin{document}
+
+% ── Cover Page ───────────────────────────────────────────────
+\begin{titlepage}
+\pagecolor{headerbg}
+\color{headertext}
+\vspace*{2cm}
+\begin{center}
+  {\fontsize{36}{44}\selectfont\bfseries Vibration Analysis Suite}\\[0.6cm]
+  {\Large\color{muted} Complete User Manual}\\[2.5cm]
+
+  \begin{mdframed}[linecolor=accent, linewidth=1.5pt,
+                   backgroundcolor=headerbg,
+                   leftmargin=2cm, rightmargin=2cm,
+                   innertopmargin=12pt, innerbottommargin=12pt]
+    \centering
+    {\large Covering:}\\[0.4cm]
+    {\normalsize
+      Raw Crop \quad$\diamond$\quad FFT Analyzer \quad$\diamond$\quad Spectrogram
+    }
+  \end{mdframed}
+
+  \vfill
+  {\large\bfseries Developed by\;}{\large\color{accent}\texttt{Akshat\_EA}}\\[0.4cm]
+  {\color{muted}\small Version 1.0 \quad$\cdot$\quad \today}
+\end{center}
+\end{titlepage}
+\nopagecolor
+
+% ── Table of Contents ────────────────────────────────────────
+\newpage
+\tableofcontents
+\newpage
+
+% ============================================================
+\section{Introduction}
+% ============================================================
+
+The \textbf{Vibration Analysis Suite} is a desktop application developed by
+\texttt{Akshat\_EA} for analysing tri-axial accelerometer data recorded in
+binary \texttt{.bin} files.  It is the Python/PyQt6 replacement for three
+MATLAB scripts previously used for the same purpose:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+\textbf{Original Script} & \textbf{Suite Tab} & \textbf{Purpose}\\
+\midrule
+\texttt{RawCrop.m}           & Raw Crop       & Load, inspect and crop recordings \\
+\texttt{VibeDriver.m}        & FFT Analyzer   & Multi-file FFT and time-domain overlay \\
+\texttt{Spectrogram\_SFFT.m} & Spectrogram    & White-hot spectrogram visualisation \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Binary File Format}
+
+Each \texttt{.bin} file stores accelerometer records in a fixed 18-byte
+little-endian structure:
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+\textbf{Field} & \textbf{Type} & \textbf{Bytes} & \textbf{Unit}\\
+\midrule
+\texttt{time\_ms} & \texttt{uint32}  & 4 & milliseconds \\
+\texttt{accX}     & \texttt{float32} & 4 & milli-g (converted to g on load) \\
+\texttt{accY}     & \texttt{float32} & 4 & milli-g (converted to g on load) \\
+\texttt{accZ}     & \texttt{float32} & 4 & milli-g (converted to g on load) \\
+\texttt{rate\_hz} & \texttt{uint16}  & 2 & Hz \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{notebox}
+Acceleration values are stored as milli-g in the file.  The application
+automatically divides them by 1000 on load, so all displayed values are
+in units of \textbf{g}.
+\end{notebox}
+
+% ============================================================
+\section{Accessing the Machine}
+% ============================================================
+
+\subsection{Physical Access}
+
+\begin{enumerate}[leftmargin=*, label=\textbf{\arabic*.}]
+  \item Locate the designated analysis workstation.
+  \item Ensure the machine is connected to power and the monitor is on.
+  \item Press the \key{Power} button if the machine is off; if it is
+        sleeping, press any key or move the mouse to wake it.
+\end{enumerate}
+
+\subsection{Booting into Windows}
+
+\resetsteps
+\step{When the machine powers on, watch for the manufacturer splash screen.}
+\step{If a \textbf{Boot Menu} appears (common on shared or dual-boot machines),
+      use the arrow keys \key{$\uparrow$} \key{$\downarrow$} to highlight
+      \textbf{Windows 11} and press \key{Enter}.}
+\step{Wait for the Windows login screen to appear.}
+\step{Enter the Windows account credentials provided by \texttt{Akshat\_EA} and
+      press \key{Enter} to log in.}
+\step{Wait for the desktop to fully load before proceeding.}
+
+\begin{warnbox}
+Do \textbf{not} interrupt the boot process or force-shutdown the machine
+while Windows is loading.  This can corrupt system files.
+\end{warnbox}
+
+% ============================================================
+\section{Launching the Application}
+% ============================================================
+
+\subsection{Opening Windows PowerShell}
+
+\resetsteps
+\step{Right-click on the \textbf{Start} button (bottom-left of the taskbar).}
+\step{Click \textbf{Terminal} or \textbf{Windows PowerShell} from the context
+      menu.  A terminal window with a blue or dark background will appear.}
+
+Alternatively:
+\begin{itemize}
+  \item Press \key{Win} + \key{R}, type \texttt{powershell}, and press \key{Enter}.
+  \item Or press \key{Win} + \key{X} and select \textbf{Terminal}.
+\end{itemize}
+
+\subsection{Starting the Application}
+
+Once the terminal is open, type the following command and press \key{Enter}:
+
+\begin{lstlisting}
+vibe
+\end{lstlisting}
+
+\begin{notebox}
+The \texttt{vibe} command is a PowerShell alias pre-configured on this
+machine by \texttt{Akshat\_EA}.  It internally runs:
+\begin{lstlisting}
+python "C:\Users\Akshat\Desktop\VibrationAnalysis\main.py"
+\end{lstlisting}
+You do \textbf{not} need to navigate to any folder or type the full path.
+\end{notebox}
+
+\begin{tipbox}
+If the terminal shows \texttt{vibe : The term 'vibe' is not recognized},
+contact \texttt{Akshat\_EA} to restore the PowerShell alias.
+\end{tipbox}
+
+% ============================================================
+\section{Password Authentication}
+% ============================================================
+
+Immediately after launching, a password dialog appears before the main
+application window.  The application \textbf{cannot} be used without
+entering the correct password.
+
+\subsection{Entering the Password}
+
+\resetsteps
+\step{The dialog box titled \textbf{Vibration Analysis Suite} will appear.}
+\step{Click inside the password field (it may already be focused).}
+\step{Type the password provided by \texttt{Akshat\_EA}.}
+\step{Press \key{Enter} or click the \btn{Unlock} button.}
+\step{If the password is correct, the main application window opens immediately.}
+
+\subsection{Failed Attempts}
+
+\begin{itemize}
+  \item After each wrong password, the dialog shows how many attempts remain.
+  \item You are allowed \textbf{3 attempts} in total.
+  \item After 3 incorrect entries, the password field and the \btn{Unlock}
+        button are disabled (greyed out), the message
+        \textit{``Too many wrong attempts.  Contact Akshat\_EA for further
+        information.''} is displayed, and the application closes
+        automatically after a short delay.
+\end{itemize}
+
+\begin{warnbox}
+If you exhaust all 3 attempts, you must contact \textbf{Akshat\_EA} to
+regain access.  Re-launching with \texttt{vibe} immediately resets the
+counter.
+\end{warnbox}
+
+% ============================================================
+\section{Application Overview}
+% ============================================================
+
+After a successful login, the main window opens with the following layout:
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Region} & \textbf{Description}\\
+\midrule
+Header bar    & App title, \textit{developed by Akshat\_EA} credit, theme toggle \\
+Tab bar       & Three tabs: Raw Crop, FFT Analyzer, Spectrogram \\
+Left panel    & Controls for the active tab (always 250--270 px wide) \\
+Right panel   & Matplotlib plot canvas with navigation toolbar \\
+Console       & Colour-coded log at the bottom of the window \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Theme Toggle}
+
+Click the \btn{$\odot$ Light Mode} / \btn{$\bullet$ Dark Mode} button in
+the top-right of the header bar to switch between the light and dark
+colour themes at any time.  The switch is \textbf{non-destructive}: it
+does not reset zoom, pan, selections, or any loaded data.
+
+\subsection{Console Log}
+
+The console at the bottom of the window records every action taken.
+Messages are colour-coded by tab:
+
+\begin{itemize}
+  \item \textcolor{accent}{\textbf{Blue}} — Raw Crop messages (\texttt{[Crop]})
+  \item \textcolor{success}{\textbf{Green}} — FFT Analyzer messages (\texttt{[FFT]})
+  \item \textcolor[HTML]{6a1b9a}{\textbf{Purple}} — Spectrogram messages (\texttt{[Spec]})
+\end{itemize}
+
+% ============================================================
+\section{Raw Crop Tab}
+% ============================================================
+
+The Raw Crop tab is used to load a \texttt{.bin} file, visually inspect the
+full time-domain signal on all three axes, select a sub-range of interest
+using interactive trim bars, and export the cropped data as a new
+\texttt{.bin} file.
+
+\subsection{Loading a File}
+
+\resetsteps
+\step{Click \btn{Load BIN File}.}
+\step{A file browser opens.  Navigate to the folder containing your
+      \texttt{.bin} file and double-click it (or select and press \key{Open}).}
+\step{Three time-domain subplots appear — one for each axis (AccX, AccY, AccZ).
+      The left panel shows the file name, total record count, time range, and
+      approximate sample rate.}
+
+\subsection{Understanding the Plot}
+
+Each subplot shows \textbf{acceleration (g)} on the Y-axis versus
+\textbf{time (s)} on the X-axis.  Two coloured vertical dashed lines overlay
+every subplot simultaneously:
+
+\begin{itemize}
+  \item \textcolor{success}{\textbf{Green dashed line}} — Start of the selected crop window
+  \item \textcolor{warn}{\textbf{Red dashed line}} — End of the selected crop window
+  \item A \textcolor{success}{semi-transparent green band} fills the selected region across all plots.
+\end{itemize}
+
+\subsection{Selecting a Crop Range}
+
+There are two ways to set the start and end times:
+
+\subsubsection{Method A — Drag the Trim Bars}
+
+\begin{enumerate}[leftmargin=*, label=\textbf{\arabic*.}]
+  \item Hover the mouse over either the green or red dashed line on any subplot.
+        The cursor changes to a \textbf{horizontal resize arrow} ($\leftrightarrow$)
+        when close enough to grab it (within 8 pixels).
+  \item Click and hold the left mouse button, then drag left or right.
+  \item All three subplots update simultaneously — the trim bars are always
+        in sync across AccX, AccY, and AccZ.
+  \item Release the mouse button to set the position.
+\end{enumerate}
+
+\subsubsection{Method B — Spin Box Entry}
+
+\begin{enumerate}[leftmargin=*, label=\textbf{\arabic*.}]
+  \item In the \textbf{Crop Range} panel on the left, find the
+        \textbf{Start Time (s)} and \textbf{End Time (s)} spin boxes.
+  \item Click a spin box and type a value directly, or use the
+        \key{$\uparrow$} / \key{$\downarrow$} arrows to step by 0.1 s.
+  \item The trim bars on the plot move instantly to match.
+\end{enumerate}
+
+\begin{notebox}
+The \textbf{live selection info} below the spin boxes shows the exact
+number of records selected and the precise time range in real time as
+you drag or type.
+\end{notebox}
+
+\subsection{Saving the Cropped File}
+
+\resetsteps
+\step{Once the desired range is selected, click \btn{Crop \& Save}.}
+\step{A file save dialog opens, pre-filled with a suggested filename of the form:
+\begin{lstlisting}
+originalname_crop_12.3-45.6s.bin
+\end{lstlisting}
+Change the filename or destination if needed, then click \key{Save}.}
+\step{The console confirms the number of records written and the file path.}
+\step{A popup asks: \textit{``Would you like to add it to the FFT Analyzer
+      tab?''}  Click \btn{Yes} to load the cropped file into the FFT Analyzer
+      immediately, or \btn{No} to skip.}
+
+\begin{warnbox}
+Ensure \textbf{Start Time $<$ End Time}; the application will reject the
+crop and log an error otherwise.
+\end{warnbox}
+
+\subsection{Navigation Toolbar}
+
+The matplotlib toolbar above the plot provides standard navigation:
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{Button} & \textbf{Action}\\
+\midrule
+Home        & Reset to the original full view \\
+Back / Forward & Step through view history \\
+Pan (hand)  & Click-drag to pan the plot \\
+Zoom (magnifier) & Draw a rectangle to zoom into that region \\
+Save (floppy) & Export the current plot as an image \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{tipbox}
+Zoom and pan are \textbf{independent} of the trim bars.  You can zoom
+into a noisy region to precisely position a trim bar without affecting
+the crop range.
+\end{tipbox}
+
+% ============================================================
+\section{FFT Analyzer Tab}
+% ============================================================
+
+The FFT Analyzer tab loads one or more \texttt{.bin} files and overlays
+their frequency-domain (FFT) and time-domain plots on a shared canvas.
+Up to \textbf{10 files} can be loaded simultaneously.
+
+\subsection{Loading Files}
+
+\resetsteps
+\step{Click \btn{Add Files} in the \textbf{Files} group.}
+\step{A multi-select file browser opens.  Hold \key{Ctrl} or \key{Shift} to
+      select multiple \texttt{.bin} files at once, then click \key{Open}.}
+\step{Each loaded file appears as a row in the file list, showing:
+      a coloured swatch (unique per file), the truncated filename, and a
+      visibility checkbox.}
+\step{The \textbf{file count} label updates (e.g., ``3 files loaded'').}
+\step{Click \btn{Analyze} to draw the plots.}
+
+\subsubsection{Removing All Files}
+
+Click \btn{Clear} to unload all files and reset the canvas.
+
+\subsection{FFT Settings Panel}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+\toprule
+\textbf{Control} & \textbf{Description}\\
+\midrule
+Smoothing Window    & Moving-average window (samples) applied to the FFT
+                      magnitude spectrum.  Higher values = smoother curve.
+                      Default: 10. \\[4pt]
+Auto Y-limit        & When checked (default), the Y-axis upper limit is
+                      automatically set to $1.3 \times$ the peak magnitude
+                      across all loaded files. \\[4pt]
+Y-Axis Limit        & Manual Y-axis ceiling, used only when Auto Y-limit is
+                      unchecked.  Default: 0.5 g. \\[4pt]
+Log frequency scale & Switches the FFT X-axis to a logarithmic scale,
+                      useful for viewing a wide frequency range. \\[4pt]
+Frequency Range     & Min and max frequency (Hz) displayed on the FFT
+                      X-axis.  Default: 0 -- 50 Hz. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Show Plots Panel}
+
+Two checkboxes control which plot types are rendered:
+
+\begin{itemize}
+  \item \textbf{FFT (Frequency Domain)} — Shows the single-sided magnitude
+        spectrum for each axis.  Y-axis unit: $|$FFT$|$ (g).
+  \item \textbf{Time Domain} — Shows raw acceleration versus time.
+\end{itemize}
+
+Unchecking one option doubles the width of the remaining plots.
+At least one must remain checked.
+
+\subsection{Visibility Checkboxes}
+
+Each file row has a checkbox.  Unchecking a file \textbf{instantly hides}
+it from all plots without requiring a re-click of \btn{Analyze}.  The
+Y-axis auto-limit recalculates based on the remaining visible files.
+
+\subsection{Maximize / Restore}
+
+Each subplot has a small overlay button in its top-right corner:
+
+\begin{itemize}
+  \item \textbf{$\nearrow$ (Maximize)} — Expands that single plot to fill
+        the entire canvas for closer inspection.
+  \item \textbf{$\swarrow$ (Restore)} — Returns to the full 3-axis grid view.
+\end{itemize}
+
+\subsection{Data Cursor}
+
+The data cursor lets you click on any FFT plot to read the exact frequency
+and magnitude at a point.
+
+\resetsteps
+\step{Click the \textbf{$\oplus$ cursor button} (⌖) in the toolbar to
+      enter cursor mode.  The button highlights when active.}
+\step{Left-click anywhere on an FFT subplot.  A callout tip snaps to the
+      nearest data point on the closest plotted line and shows:
+\begin{lstlisting}
+f   = 12.345 Hz
+|A| = 0.00312 g
+\end{lstlisting}}
+\step{To dismiss a tip, \textbf{right-click} anywhere inside that subplot.}
+\step{Click the cursor button again to exit cursor mode (all tips are cleared).}
+
+\begin{notebox}
+The data cursor only works on \textbf{FFT subplots}.  Clicking on
+time-domain subplots while in cursor mode has no effect.  The cursor
+is also automatically suspended when zoom or pan mode is active.
+\end{notebox}
+
+\subsection{FFT Algorithm}
+
+The FFT computation matches the original MATLAB \texttt{VibeDriver.m}
+normalisation:
+
+\begin{align}
+  \text{mag}[k] &= \left|\frac{X[k]}{N}\right|, \quad k = 0, 1, \ldots, \tfrac{N}{2}\\
+  \text{mag}[k] &\times= 2, \quad k = 1, \ldots, \tfrac{N}{2}-1
+\end{align}
+
+where $X$ is the DFT of the de-trended signal and $N$ is the signal length.
+\texttt{scipy.signal.detrend} removes the DC offset and linear drift before
+the FFT.
+
+% ============================================================
+\section{Spectrogram Tab}
+% ============================================================
+
+The Spectrogram tab generates a high-resolution time-frequency heatmap of
+the AccX channel using the \textbf{white-hot} colourmap (dark navy → blue →
+orange → red → white), matching the MATLAB \texttt{Spectrogram\_SFFT.m}
+output.
+
+\subsection{Loading a File}
+
+\resetsteps
+\step{Click \btn{Load BIN File}.}
+\step{Select a \texttt{.bin} file.  The left panel shows the filename,
+      record count, time range, and sample rate.}
+\step{The \btn{Analyze} button becomes active.}
+
+\subsection{Spectrogram Settings}
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+\toprule
+\textbf{Control} & \textbf{Description}\\
+\midrule
+Window Size      & Length of each FFT window (samples).  Larger windows give
+                   better \textbf{frequency resolution} but worse time
+                   resolution.  Range: 64--16384.  Default: 1024. \\[4pt]
+Magnitude Limit (g) & The upper bound of the colour scale.  Data points at or
+                   above this value are rendered \textbf{white} (hottest
+                   colour).  Increase if most of the plot looks white;
+                   decrease if it looks mostly dark.  Default: 1.2 g. \\[4pt]
+Freq Range (Hz)  & The Y-axis frequency range displayed.  Only affects the
+                   visible area — all frequencies are still computed.
+                   Default: 0 -- 40 Hz. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\begin{notebox}
+\textbf{Overlap} and \textbf{NFFT} are computed automatically:
+\begin{itemize}
+  \item Overlap $= \lfloor\text{Window} / 2\rfloor$ \;(50\,\% overlap)
+  \item NFFT $= \max(4096,\; \text{Window} \times 4)$
+\end{itemize}
+These defaults provide good time-frequency balance for typical
+flight/vibration recordings without requiring manual tuning.
+\end{notebox}
+
+\subsection{Running the Analysis}
+
+\resetsteps
+\step{Adjust the settings if needed (or leave defaults).}
+\step{Click \btn{Analyze}.}
+\step{The canvas shows \textit{``Computing spectrogram\ldots''} and the buttons
+      are temporarily disabled.  For long recordings this may take a few
+      seconds — the application remains \textbf{fully responsive} during
+      computation.}
+\step{When done, the white-hot spectrogram appears:
+      \begin{itemize}
+        \item X-axis: Flight time (s)
+        \item Y-axis: Frequency (Hz)
+        \item Colour scale: Magnitude (g) from dark (low) to white (high)
+      \end{itemize}}
+
+\subsection{Reading the Spectrogram}
+
+\begin{itemize}
+  \item \textbf{Bright / white regions} indicate high vibration energy at
+        that frequency and time — potential resonance or structural response.
+  \item \textbf{Dark / navy regions} indicate low energy — quiet periods or
+        frequencies with little activity.
+  \item \textbf{Horizontal bands} (constant frequency, persistent) suggest
+        structural resonance modes.
+  \item \textbf{Vertical bright stripes} (across all frequencies, brief time)
+        suggest short impulse events.
+\end{itemize}
+
+\subsection{Adjusting the Colour Scale}
+
+If the plot appears \textbf{mostly white}: reduce the \textbf{Magnitude Limit}
+and re-run.  If the plot appears \textbf{mostly dark}: increase it and re-run.
+A good starting point is just above the background noise floor.
+
+% ============================================================
+\section{Keyboard \& Mouse Reference}
+% ============================================================
+
+\begin{center}
+\begin{tabularx}{\linewidth}{llX}
+\toprule
+\textbf{Location} & \textbf{Input} & \textbf{Action}\\
+\midrule
+Password dialog   & \key{Enter}        & Submit password \\
+Spin boxes        & \key{$\uparrow$} / \key{$\downarrow$} & Increment / decrement value \\
+Any plot          & Scroll wheel       & Zoom in/out (when zoom mode active) \\
+Crop plot         & Left-click + drag near trim bar & Move start or end bar \\
+Crop plot         & Mouse hover near bar & Cursor changes to resize arrow \\
+FFT plot (cursor mode) & Left-click   & Place data-cursor tip \\
+FFT plot (cursor mode) & Right-click  & Dismiss tip on that subplot \\
+Toolbar           & Click Zoom, then drag & Draw zoom rectangle \\
+Toolbar           & Click Pan, then drag  & Pan the view \\
+Toolbar           & Home icon             & Reset zoom/pan to full view \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% ============================================================
+\section{Troubleshooting}
+% ============================================================
+
+\begin{center}
+\begin{tabularx}{\linewidth}{lX}
+\toprule
+\textbf{Symptom} & \textbf{Solution}\\
+\midrule
+\texttt{vibe} not recognised & Contact \texttt{Akshat\_EA} to restore the
+                               PowerShell alias. \\[4pt]
+Application does not launch  & Ensure Python 3 is installed and
+                               \texttt{vibe} points to the correct path.
+                               Try running \texttt{python main.py} manually
+                               from the \texttt{VibrationAnalysis} folder. \\[4pt]
+\textit{``File has no complete records''} error & The selected file is empty
+                               or corrupted.  Verify the file size is a
+                               multiple of 18 bytes. \\[4pt]
+Spectrogram takes very long  & Reduce the \textbf{Window Size} (e.g., to 512)
+                               for a faster, lower-resolution result. \\[4pt]
+FFT plot looks flat / all zero & The file may contain NaN or corrupt records.
+                               The application substitutes zeros for corrupt
+                               values automatically. \\[4pt]
+Three wrong password attempts & Re-launch with \texttt{vibe} and contact
+                               \texttt{Akshat\_EA} for the correct password. \\[4pt]
+Theme colours not updating   & This is a known cosmetic issue on some
+                               display drivers.  Toggle the theme twice
+                               to force a repaint. \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% ============================================================
+\section{Contact \& Support}
+% ============================================================
+
+For access credentials, technical issues, or feature requests, contact:
+
+\begin{center}
+\Large\textbf{\color{accent} Akshat\_EA}
+\end{center}
+
+\vspace{0.5cm}
+
+\begin{notebox}
+This application and its documentation are developed and maintained
+exclusively by \textbf{Akshat\_EA}.  Unauthorised distribution or
+modification is not permitted.
+\end{notebox}
+
+% ── Back cover ───────────────────────────────────────────────
+\newpage
+\pagecolor{headerbg}
+\color{headertext}
+\vspace*{\fill}
+\begin{center}
+  {\Large\bfseries Vibration Analysis Suite}\\[0.4cm]
+  {\color{muted} User Manual — Version 1.0}\\[1.5cm]
+  {\color{muted}\small Developed by\;}\textbf{\color{accent}\large Akshat\_EA}\\[0.4cm]
+  {\color{muted}\small \today}
+\end{center}
+\vspace*{\fill}
+
+\end{document}
