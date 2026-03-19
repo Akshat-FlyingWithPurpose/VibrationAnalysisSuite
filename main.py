@@ -127,7 +127,8 @@ class PasswordDialog(QDialog):
 
 def main():
     app = QApplication(sys.argv)
-    app.setFont(QFont("Segoe UI", 10))
+    _ui_font = "Segoe UI" if sys.platform == "win32" else "SF Pro Text"
+    app.setFont(QFont(_ui_font, 10))
     app.setApplicationName("Vibration Analysis Suite")
 
     dlg = PasswordDialog()

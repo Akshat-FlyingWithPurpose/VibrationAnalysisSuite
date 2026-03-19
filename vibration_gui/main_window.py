@@ -1,6 +1,7 @@
 """
 Main application window for the Vibration Analysis Suite.
 """
+import sys
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QTabWidget, QTextEdit, QSplitter, QLabel, QPushButton,
@@ -106,7 +107,7 @@ class MainWindow(QMainWindow):
 
         self.console = QTextEdit()
         self.console.setReadOnly(True)
-        self.console.setFont(QFont("Consolas", 10))
+        self.console.setFont(QFont("Consolas" if sys.platform == "win32" else "Menlo", 10))
         cwl.addWidget(self.console)
 
         splitter.addWidget(self._console_wrap)
@@ -184,6 +185,6 @@ class MainWindow(QMainWindow):
             color = colors["default"]
 
         self.console.append(
-            f'<span style="color:{color}; font-family:Consolas;">» {message}</span>'
+            f'<span style="color:{color}; font-family:Consolas,Menlo,Monaco,\'Courier New\',monospace;">» {message}</span>'
         )
         self.console.moveCursor(QTextCursor.MoveOperation.End)

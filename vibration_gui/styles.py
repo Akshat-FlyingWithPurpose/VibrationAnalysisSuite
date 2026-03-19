@@ -90,7 +90,7 @@ DARK_QSS = """
 QMainWindow, QWidget {
     background-color: #1e1e2e;
     color: #cdd6f4;
-    font-family: "Segoe UI", "Arial", sans-serif;
+    font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", "Arial", sans-serif;
     font-size: 11px;
 }
 
@@ -195,7 +195,7 @@ QTextEdit {
     color: #a6e3a1;
     border: none;
     border-top: 1px solid #313244;
-    font-family: "Consolas", "Courier New", monospace;
+    font-family: "Consolas", "Menlo", "Monaco", "Courier New", monospace;
     font-size: 11px;
     padding: 4px;
 }
@@ -365,7 +365,7 @@ LIGHT_QSS = """
 QMainWindow, QWidget {
     background-color: #eff1f5;
     color: #4c4f69;
-    font-family: "Segoe UI", "Arial", sans-serif;
+    font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", "Arial", sans-serif;
     font-size: 11px;
 }
 
@@ -470,7 +470,7 @@ QTextEdit {
     color: #2e7d32;
     border: none;
     border-top: 1px solid #ccd0da;
-    font-family: "Consolas", "Courier New", monospace;
+    font-family: "Consolas", "Menlo", "Monaco", "Courier New", monospace;
     font-size: 11px;
     padding: 4px;
 }

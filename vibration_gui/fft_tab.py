@@ -8,6 +8,7 @@ Per-file checkboxes toggle visibility with instant redraw.
 Each subplot has a ⤢ maximize button; maximized view has a ⤡ restore button.
 """
 import os
+import sys
 import numpy as np
 
 from PyQt6.QtWidgets import (
@@ -193,7 +194,7 @@ class FFTTab(QWidget):
         self.toolbar.addSeparator()
         self._cursor_btn = QToolButton()
         self._cursor_btn.setText("⌖")
-        self._cursor_btn.setFont(QFont("Segoe UI", 13))
+        self._cursor_btn.setFont(QFont("Segoe UI" if sys.platform == "win32" else "SF Pro Text", 13))
         self._cursor_btn.setFixedSize(32, 28)
         self._cursor_btn.setCheckable(True)
         self._cursor_btn.setChecked(False)
@@ -322,7 +323,7 @@ class FFTTab(QWidget):
         name_lbl = QLabel(display)
         name_lbl.setToolTip(filepath)
         name_lbl.setStyleSheet("font-size:11px; background:transparent;")
-        name_lbl.setFont(QFont("Segoe UI", 10))
+        name_lbl.setFont(QFont("Segoe UI" if sys.platform == "win32" else "SF Pro Text", 10))
 
         chk = QCheckBox()
         chk.setChecked(True)
