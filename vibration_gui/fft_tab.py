@@ -19,14 +19,14 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
 
-from .bin_io import read_bin
+from .bin_io import read_bin, NUM_IMUS, IMU_NAMES
 from .analysis import compute_fft
 from . import plot_utils
 from .plot_utils import (
     make_canvas, style_axes, placeholder_axes, add_legend,
     retheme_axes, AXIS_COLORS,
 )
-from .styles import max_btn_style, restore_btn_style
+from .styles import max_btn_style, restore_btn_style, save_img_btn_style
 
 # Fixed colour palette — one colour per file slot (cycles after 10)
 _PALETTE = [
@@ -34,6 +34,11 @@ _PALETTE = [
     '#cba6f7', '#89dceb', '#f9e2af', '#94e2d5',
     '#eba0ac', '#b4befe',
 ]
+
+# One line style per IMU so all 4 IMUs from the same file stay the same colour
+# but are visually distinguishable
+_IMU_STYLES = ['-', '--', '-.', ':']
+_IMU_WIDTHS = [1.0, 0.95, 0.95, 0.9]
 
 
 
@@ -172,6 +177,20 @@ class FFTTab(QWidget):
 
         cl.addWidget(vg)
 
+        # ── IMU Selection ────────────────────────────────────────────────────
+        ig = QGroupBox("IMU Selection")
+        il = QVBoxLayout(ig)
+        il.setSpacing(4)
+
+        self._imu_chks = []
+        for i in range(NUM_IMUS):
+            chk = QCheckBox(IMU_NAMES[i])
+            chk.setChecked(True)
+            il.addWidget(chk)
+            self._imu_chks.append(chk)
+
+        cl.addWidget(ig)
+
         # ── Analyze button ───────────────────────────────────────────────────
         self.btn_analyze = QPushButton("Analyze")
         self.btn_analyze.setObjectName("btn_action")
@@ -246,6 +265,16 @@ class FFTTab(QWidget):
         pl.addWidget(nav_bar)
         pl.addWidget(self.canvas)
 
+        # ── Save-image overlay button (always visible, top-right of canvas) ────
+        self._save_img_btn = QPushButton("⬇", self.canvas)
+        self._save_img_btn.setFixedSize(24, 24)
+        self._save_img_btn.setToolTip("Save plot image to ~/Downloads/VibeResults")
+        self._save_img_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._save_img_btn.setStyleSheet(save_img_btn_style(plot_utils._dark))
+        self._save_img_btn.clicked.connect(self._save_plot_image)
+        self._save_img_btn.show()
+        self._save_img_btn.raise_()
+
         # Reposition overlay buttons whenever the canvas is resized
         self.canvas.mpl_connect('resize_event',
                                 lambda _e: self._reposition_buttons())
@@ -259,6 +288,14 @@ class FFTTab(QWidget):
         placeholder_axes(self.fig, "Add .bin files and click Analyze.")
         self.canvas.draw()
         self._update_nav()
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # IMU selection helper
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _active_imus(self) -> list[int]:
+        """Return list of IMU indices (0-based) whose checkboxes are ticked."""
+        return [i for i, chk in enumerate(self._imu_chks) if chk.isChecked()]
 
     # ─────────────────────────────────────────────────────────────────────────
     # Axis navigation
@@ -393,6 +430,13 @@ class FFTTab(QWidget):
 
     def _reposition_buttons(self):
         """Move each overlay button to the top-right corner of its axes."""
+        # Always keep the save button pinned to the canvas top-right corner
+        cw = self.canvas.width()
+        if cw > 0:
+            margin = 6
+            self._save_img_btn.move(cw - self._save_img_btn.width() - margin, margin)
+            self._save_img_btn.raise_()
+
         if not self._max_btns:
             return
 
@@ -453,34 +497,42 @@ class FFTTab(QWidget):
         if plot_type == 'fft':
             style_axes(ax,
                        title=f"FFT \u2014 Acc{axis}",
-                       xlabel='Frequency (Hz)', ylabel='|FFT| (g)',
+                       xlabel='Frequency (Hz)', ylabel='|FFT| (m/s\u00b2)',
                        title_color=AXIS_COLORS[axis])
         else:
             style_axes(ax,
                        title=f"Time Domain \u2014 Acc{axis}",
-                       xlabel='Time (s)', ylabel='Acceleration (g)',
+                       xlabel='Time (s)', ylabel='Acceleration (m/s\u00b2)',
                        title_color=AXIS_COLORS[axis])
 
+        active_imus = self._active_imus()
         max_peak = 0.0
         for entry in active:
-            sig = entry['data'][f'acc{axis}_uniform']
-            Fs  = entry['data']['Fs']
-            lbl = os.path.basename(entry['path'])
+            sigs_all = entry['data'][f'acc{axis}_uniform']   # list of 4 arrays
+            Fs       = entry['data']['Fs']
+            fname    = os.path.splitext(os.path.basename(entry['path']))[0][:14]
 
-            if plot_type == 'fft':
-                f, _, sm = compute_fft(sig, Fs, smooth_win)
-                ax.plot(f, sm, color=entry['color'], linewidth=1.2,
-                        alpha=0.9, label=lbl)
-                if auto_ylim:
-                    max_peak = max(max_peak, sm.max())
+            for imu_idx in active_imus:
+                sig   = sigs_all[imu_idx]
+                lbl   = IMU_NAMES[imu_idx] if len(active) == 1 \
+                        else f"{fname} · {IMU_NAMES[imu_idx]}"
+                style = _IMU_STYLES[imu_idx]
+                lw    = _IMU_WIDTHS[imu_idx]
+
+                if plot_type == 'fft':
+                    f, _, sm = compute_fft(sig, Fs, smooth_win)
+                    ax.plot(f, sm, color=entry['color'], linestyle=style,
+                            linewidth=lw, alpha=0.9, label=lbl)
+                    if auto_ylim:
+                        max_peak = max(max_peak, sm.max())
+                    else:
+                        ax.set_ylim(0, ylim_fft)
+                    if log_freq:
+                        ax.set_xscale('log')
                 else:
-                    ax.set_ylim(0, ylim_fft)
-                if log_freq:
-                    ax.set_xscale('log')
-            else:
-                ax.plot(entry['data']['time_uniform'], sig,
-                        color=entry['color'], linewidth=0.9,
-                        alpha=0.9, label=lbl)
+                    ax.plot(entry['data']['time_uniform'], sig,
+                            color=entry['color'], linestyle=style,
+                            linewidth=lw * 0.9, alpha=0.9, label=lbl)
 
         if plot_type == 'fft':
             if auto_ylim and max_peak > 0:
@@ -596,7 +648,7 @@ class FFTTab(QWidget):
         dy = -40 if y_frac > 0.75 else 12
 
         ann = ax.annotate(
-            f" f = {best_x:.3f} Hz\n |A| = {best_y:.5f} g",
+            f" f = {best_x:.3f} Hz\n |A| = {best_y:.4f} m/s\u00b2",
             xy=(best_x, best_y),
             xytext=(dx, dy),
             textcoords='offset points',
@@ -703,6 +755,9 @@ class FFTTab(QWidget):
 
     def _analyze(self):
         """Full analyze — resets to grid view, enables real-time checkbox toggle."""
+        if not self._active_imus():
+            self._log("[FFT] No IMUs selected — tick at least one IMU.")
+            return
         self._maximized_key = None
         self._analyzed = True
         self._draw(log=True)
@@ -753,7 +808,7 @@ class FFTTab(QWidget):
             ax = self.fig.add_subplot(1, n_cols, col)
             style_axes(ax,
                        title=f"FFT \u2014 Acc{axis}",
-                       xlabel='Frequency (Hz)', ylabel='|FFT| (g)',
+                       xlabel='Frequency (Hz)', ylabel='|FFT| (m/s\u00b2)',
                        title_color=AXIS_COLORS[axis])
             axes[f'fft_{axis}'] = ax
 
@@ -762,38 +817,48 @@ class FFTTab(QWidget):
             ax = self.fig.add_subplot(1, n_cols, col)
             style_axes(ax,
                        title=f"Time Domain \u2014 Acc{axis}",
-                       xlabel='Time (s)', ylabel='Acceleration (g)',
+                       xlabel='Time (s)', ylabel='Acceleration (m/s\u00b2)',
                        title_color=AXIS_COLORS[axis])
             axes[f'time_{axis}'] = ax
 
+        active_imus = self._active_imus()
         max_peak = 0.0
 
         for entry in active:
-            sig   = entry['data'][f'acc{axis}_uniform']
-            t     = entry['data']['time_uniform']
-            Fs    = entry['data']['Fs']
-            color = entry['color']
-            fname = os.path.basename(entry['path'])
+            sigs_all = entry['data'][f'acc{axis}_uniform']  # list of 4 arrays
+            t        = entry['data']['time_uniform']
+            Fs       = entry['data']['Fs']
+            color    = entry['color']
+            fname    = os.path.basename(entry['path'])
+            fname_s  = os.path.splitext(fname)[0][:14]
 
-            if show_fft:
-                f, _, sm = compute_fft(sig, Fs, smooth_win)
-                ax = axes[f'fft_{axis}']
-                ax.plot(f, sm, color=color, linewidth=0.9,
-                        alpha=0.85, label=fname)
-                if auto_ylim:
-                    max_peak = max(max_peak, sm.max())
-                else:
-                    ax.set_ylim(0, ylim_fft)
-                if log_freq:
-                    ax.set_xscale('log')
+            for imu_idx in active_imus:
+                sig   = sigs_all[imu_idx]
+                lbl   = IMU_NAMES[imu_idx] if len(active) == 1 \
+                        else f"{fname_s} · {IMU_NAMES[imu_idx]}"
+                style = _IMU_STYLES[imu_idx]
+                lw    = _IMU_WIDTHS[imu_idx]
 
-            if show_time:
-                ax = axes[f'time_{axis}']
-                ax.plot(t, sig, color=color, linewidth=0.7,
-                        alpha=0.8, label=fname)
+                if show_fft:
+                    f, _, sm = compute_fft(sig, Fs, smooth_win)
+                    ax = axes[f'fft_{axis}']
+                    ax.plot(f, sm, color=color, linestyle=style,
+                            linewidth=lw, alpha=0.85, label=lbl)
+                    if auto_ylim:
+                        max_peak = max(max_peak, sm.max())
+                    else:
+                        ax.set_ylim(0, ylim_fft)
+                    if log_freq:
+                        ax.set_xscale('log')
 
+                if show_time:
+                    ax = axes[f'time_{axis}']
+                    ax.plot(t, sig, color=color, linestyle=style,
+                            linewidth=lw * 0.75, alpha=0.8, label=lbl)
+
+            n_imu_shown = len(active_imus)
             if log:
-                self._log(f"[FFT] Processed '{fname}' (Fs\u2248{Fs:.1f} Hz)")
+                self._log(f"[FFT] Processed '{fname}' — {n_imu_shown} IMU(s), Fs\u2248{Fs:.1f} Hz")
 
         if show_fft:
             ax = axes[f'fft_{axis}']
@@ -819,12 +884,25 @@ class FFTTab(QWidget):
             )
 
     # ─────────────────────────────────────────────────────────────────────────
+    # Save plot image
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _save_plot_image(self):
+        from .plot_utils import save_figure
+        try:
+            path = save_figure(self.fig, "FFT")
+            self._log(f"[FFT] Image saved → {path}")
+        except Exception as e:
+            self._log(f"[FFT] Error saving image: {e}")
+
+    # ─────────────────────────────────────────────────────────────────────────
     # Theme
     # ─────────────────────────────────────────────────────────────────────────
 
     def redraw_theme(self):
         """Repaint axes colours in-place — preserves zoom, pan, selections."""
         self.fig.patch.set_facecolor(plot_utils.FIG_BG)
+        self._save_img_btn.setStyleSheet(save_img_btn_style(plot_utils._dark))
         if not self._current_axes_dict:
             placeholder_axes(self.fig, "Add .bin files and click Analyze.")
             self.canvas.draw()

@@ -150,3 +150,20 @@ def add_legend(ax, *, ncol=1):
         loc='upper right',
         ncol=ncol,
     )
+
+
+def save_figure(fig, tab_prefix: str = "plot") -> str:
+    """Save the current figure to ~/Downloads/VibeResults/<prefix>_<timestamp>.png.
+
+    The folder is created automatically if it does not exist.
+    Returns the absolute path of the saved file.
+    """
+    import pathlib
+    import datetime
+    folder = pathlib.Path.home() / "Downloads" / "VibeResults"
+    folder.mkdir(parents=True, exist_ok=True)
+    ts   = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    path = folder / f"{tab_prefix}_{ts}.png"
+    fig.savefig(str(path), dpi=150, bbox_inches='tight',
+                facecolor=fig.get_facecolor())
+    return str(path)

@@ -15,13 +15,18 @@ from PyQt6.QtCore import Qt
 
 from matplotlib.patches import Rectangle
 
-from .bin_io import read_bin, write_bin
+from .bin_io import read_bin, write_bin, NUM_IMUS, IMU_NAMES
 from . import plot_utils
 from .plot_utils import make_canvas, style_axes, placeholder_axes, retheme_axes, AXIS_COLORS
+from .styles import save_img_btn_style
 
 
 # Pixel grab radius — how close the mouse must be to a trim bar to grab it
 _GRAB_PX = 8
+
+# One distinct colour per IMU (visible on both light and dark backgrounds)
+_IMU_COLORS = ['#1565c0', '#e53935', '#2e7d32', '#e65100']
+_IMU_ALPHAS = [0.90, 0.85, 0.85, 0.80]
 
 
 class CropTab(QWidget):
@@ -145,6 +150,17 @@ class CropTab(QWidget):
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
 
+        # ── Save-image overlay button (always visible, top-right of canvas) ────
+        self._save_img_btn = QPushButton("⬇", self.canvas)
+        self._save_img_btn.setFixedSize(24, 24)
+        self._save_img_btn.setToolTip("Save plot image to ~/Downloads/VibeResults")
+        self._save_img_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._save_img_btn.setStyleSheet(save_img_btn_style(plot_utils._dark))
+        self._save_img_btn.clicked.connect(self._save_plot_image)
+        self._save_img_btn.show()
+        self._save_img_btn.raise_()
+        self.canvas.mpl_connect('resize_event', lambda _e: self._position_save_btn())
+
         placeholder_axes(self.fig, "Load a .bin file to inspect and crop.")
         self.canvas.draw()
 
@@ -153,15 +169,14 @@ class CropTab(QWidget):
     # ─────────────────────────────────────────────────────────────────────────
 
     def _plot_data(self, data: dict, subtitle: str = ""):
-        """Render time-domain signals and install draggable trim bars."""
-        t      = data['time_s']
-        sigs   = [data['accX'], data['accY'], data['accZ']]
-        labels = ['AccX', 'AccY', 'AccZ']
+        """Render time-domain signals (all 4 IMUs) and install draggable trim bars."""
+        t         = data['time_s']
+        sigs      = [data['accX'], data['accY'], data['accZ']]  # each: list of 4 arrays
+        labels    = ['AccX', 'AccY', 'AccZ']
         axes_keys = list(AXIS_COLORS.keys())   # ['X', 'Y', 'Z']
 
         t_start = self.spin_start.value() if self.spin_start.isEnabled() else t[0]
         t_end   = self.spin_end.value()   if self.spin_end.isEnabled()   else t[-1]
-        # Clamp to data range (e.g. after theme redraw)
         t_start = max(t[0], min(t[-1], t_start))
         t_end   = max(t[0], min(t[-1], t_end))
 
@@ -174,13 +189,18 @@ class CropTab(QWidget):
         self.fig.clear()
         self.fig.patch.set_facecolor(plot_utils.FIG_BG)
 
-        for i, (sig, lbl, axis) in enumerate(zip(sigs, labels, axes_keys)):
+        for i, (sig_all, lbl, axis) in enumerate(zip(sigs, labels, axes_keys)):
             ax = self.fig.add_subplot(3, 1, i + 1)
-            color = AXIS_COLORS[axis]
             style_axes(ax, title=f"{lbl}  {subtitle}",
-                       xlabel='Time (s)', ylabel='Acceleration (g)',
-                       title_color=color)
-            ax.plot(t, sig, color=color, linewidth=0.7, alpha=0.9)
+                       xlabel='Time (s)', ylabel='Acceleration (m/s\u00b2)',
+                       title_color=AXIS_COLORS[axis])
+            # Plot all 4 IMUs on this subplot
+            for imu_idx in range(NUM_IMUS):
+                ax.plot(t, sig_all[imu_idx],
+                        color=_IMU_COLORS[imu_idx],
+                        linewidth=0.7, alpha=_IMU_ALPHAS[imu_idx],
+                        label=IMU_NAMES[imu_idx])
+            ax.legend(fontsize=7, loc='upper right')
 
             # Filled span for selected region — Rectangle is easier to update
             # than axvspan's Polygon; x-transform=data, y-transform=axes (0-1)
@@ -403,11 +423,11 @@ class CropTab(QWidget):
         try:
             write_bin(
                 save_path,
-                d['time_ms'][mask],
-                d['accX'][mask],
-                d['accY'][mask],
-                d['accZ'][mask],
-                d['rate_hz'][mask],
+                d['time_us'][mask],
+                [d['accX'][i][mask] for i in range(NUM_IMUS)],
+                [d['accY'][i][mask] for i in range(NUM_IMUS)],
+                [d['accZ'][i][mask] for i in range(NUM_IMUS)],
+                d.get('start_epoch', 0),
             )
         except Exception as e:
             self._log(f"[Crop] Error saving file: {e}")
@@ -432,12 +452,33 @@ class CropTab(QWidget):
                 self._log("[Crop] Added cropped file to FFT Analyzer.")
 
     # ─────────────────────────────────────────────────────────────────────────
+    # Save plot image
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _position_save_btn(self):
+        """Pin the save button to the top-right corner of the canvas."""
+        cw = self.canvas.width()
+        if cw > 0:
+            margin = 6
+            self._save_img_btn.move(cw - self._save_img_btn.width() - margin, margin)
+            self._save_img_btn.raise_()
+
+    def _save_plot_image(self):
+        from .plot_utils import save_figure
+        try:
+            path = save_figure(self.fig, "Crop")
+            self._log(f"[Crop] Image saved → {path}")
+        except Exception as e:
+            self._log(f"[Crop] Error saving image: {e}")
+
+    # ─────────────────────────────────────────────────────────────────────────
     # Theme
     # ─────────────────────────────────────────────────────────────────────────
 
     def redraw_theme(self):
         """Repaint axes colours in-place — preserves zoom, pan, trim bars."""
         self.fig.patch.set_facecolor(plot_utils.FIG_BG)
+        self._save_img_btn.setStyleSheet(save_img_btn_style(plot_utils._dark))
         if not self._trim_axes:
             placeholder_axes(self.fig, "Load a .bin file to inspect and crop.")
             self.canvas.draw()

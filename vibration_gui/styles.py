@@ -587,6 +587,27 @@ QFrame#file_row:hover { background: #dce0f4; }
 """
 
 
+def save_img_btn_style(dark: bool) -> str:
+    """Style for the ⬇ save-image overlay button (top-right corner of canvas)."""
+    if dark:
+        return (
+            "QPushButton {"
+            "background-color:rgba(20,20,35,210); color:#f9e2af;"
+            "border:1px solid #45475a; border-radius:4px;"
+            "font-size:13px; font-weight:bold; padding:0px;}"
+            "QPushButton:hover {background-color:#f9e2af; color:#1e1e2e; border-color:#f9e2af;}"
+            "QPushButton:pressed {background-color:#fab387;}"
+        )
+    return (
+        "QPushButton {"
+        "background-color:rgba(220,224,244,210); color:#e65100;"
+        "border:1px solid #bcc0cc; border-radius:4px;"
+        "font-size:13px; font-weight:bold; padding:0px;}"
+        "QPushButton:hover {background-color:#e65100; color:#eff1f5; border-color:#e65100;}"
+        "QPushButton:pressed {background-color:#bf360c;}"
+    )
+
+
 def max_btn_style(dark: bool) -> str:
     """Style for the ⤡ maximize overlay button."""
     if dark:
